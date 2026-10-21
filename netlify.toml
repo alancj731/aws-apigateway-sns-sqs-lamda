@@ -1,0 +1,15 @@
+# Netlify builds and hosts the Angular frontend; the backend deploys to AWS from .github/workflows
+[build]
+  base = "frontend"
+  command = "npm run build"   # prebuild writes public/env.json from ORDERS_API_BASE_URL (set it in Netlify's site settings)
+  publish = "dist/orders-visualizer/browser"   # relative to base
+
+[build.environment]
+  NODE_VERSION = "22"   # scripts/write-env.mjs needs util.parseEnv (Node 22+)
+
+# Hash URLs (/#/how-it-works) mean every page is index.html, so no SPA redirect rule is needed.
+# env.json changes with each deploy's settings; don't let browsers keep an old copy.
+[[headers]]
+  for = "/env.json"
+  [headers.values]
+    Cache-Control = "no-cache"

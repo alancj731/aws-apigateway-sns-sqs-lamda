@@ -11,6 +11,8 @@ for (const name of files) {
   const file = new URL(name, root);
   if (existsSync(file)) Object.assign(env, parseEnv(readFileSync(file, 'utf8')));
 }
+// Real environment variables win over the files: hosts like Netlify set them in the site settings, with no .env
+Object.assign(env, process.env);
 
 // Only allowlisted keys reach the browser; everything else in .env stays private
 const output = {};

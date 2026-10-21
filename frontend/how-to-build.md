@@ -795,8 +795,59 @@ The site is the static files in `dist/orders-visualizer/browser/` (`index.html`,
 `env.json`). Any static host can serve them, an S3 bucket included; no rewrite rules are needed thanks to the
 `#` URLs.
 
-Before hosting it anywhere other than `http://localhost:4200`, add that origin to `WithOrigins(...)` in
-`Orders.Api/Program.cs` (Step 6a) and redeploy the API, or the browser will block Live API calls.
+Before hosting it anywhere other than `http://localhost:4200`, the deployed API must allow that origin, or the
+browser will block Live API calls. In AWS, CORS is an API Gateway setting: API Gateway answers the browser's
+preflight itself and replaces any CORS headers from Orders.Api, so `WithOrigins(...)` in `Program.cs` only matters
+locally. Step 10a has the command.
+
+### 10a. Host it on Netlify
+
+Netlify builds the site from the GitHub repo and redeploys on every push to `main`. `netlify.toml` at the repo
+root tells it where the app is:
+
+```toml
+[build]
+  base = "frontend"
+  command = "npm run build"   # prebuild writes public/env.json from ORDERS_API_BASE_URL (set it in Netlify's site settings)
+  publish = "dist/orders-visualizer/browser"   # relative to base
+
+[build.environment]
+  NODE_VERSION = "22"   # scripts/write-env.mjs needs util.parseEnv (Node 22+)
+
+[[headers]]
+  for = "/env.json"
+  [headers.values]
+    Cache-Control = "no-cache"
+```
+
+There's no `.env` on Netlify, so `scripts/write-env.mjs` also reads real environment variables, which win over
+the files:
+
+```javascript
+// Real environment variables win over the files: hosts like Netlify set them in the site settings, with no .env
+Object.assign(env, process.env);
+```
+
+1. Netlify → **Add new project → Import an existing project → GitHub**, pick the repo. Netlify reads the build
+   settings from `netlify.toml`; leave the form as it is.
+2. **Site configuration → Environment variables → Add a variable**: `ORDERS_API_BASE_URL` =
+   `https://<api-id>.execute-api.ca-central-1.amazonaws.com`. Keeping it here, not in `netlify.toml`, keeps the
+   API's address out of the public repo (although the deployed site serves it in `env.json`, as it must).
+3. **Deploys → Trigger deploy → Deploy site** so the build picks up the variable.
+4. Let the site call the API: set CORS on API Gateway. `update-api` replaces the whole list, so include
+   `localhost` too:
+
+   ```bash
+   apiId=$(aws apigatewayv2 get-apis --profile youtube-demo --region ca-central-1 \
+     --query "Items[?Name=='orders-api'].ApiId" --output text)
+
+   aws apigatewayv2 update-api --api-id $apiId \
+     --cors-configuration '{"AllowOrigins":["http://localhost:4200","https://<site-name>.netlify.app"],"AllowMethods":["POST"],"AllowHeaders":["content-type"],"ExposeHeaders":["location"],"MaxAge":3600}' \
+     --profile youtube-demo --region ca-central-1
+   ```
+
+**Check it:** open `https://<site-name>.netlify.app/env.json` → it shows your API URL. On the site, **Live API** →
+**Load from .env** → **Send order** → `202 Accepted`.
 
 ---
 
