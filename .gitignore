@@ -1,0 +1,13 @@
+# Each project has its own .gitignore (orders-serverless/.gitignore, frontend/.gitignore); these apply everywhere
+
+# Environment files
+.env
+.env.local
+
+# Editors and OS
+.idea/
+.DS_Store
+Thumbs.db
+
+# Browser test output
+.playwright-mcp/

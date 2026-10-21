@@ -1,0 +1,32 @@
+<!-- Hidden sidebar comes back when the pointer reaches the left edge, or from the menu button -->
+<div class="sidebar-edge" aria-hidden="true" (mouseenter)="showSidebar()"></div>
+<button #menuToggle class="menu-toggle" type="button" aria-label="Show menu" aria-controls="sidebar"
+        [attr.aria-expanded]="!sidebarHidden()" (click)="showSidebar()">☰</button>
+
+<aside id="sidebar" class="sidebar" [inert]="sidebarHidden()"
+       (mouseenter)="keepSidebar()" (mouseleave)="scheduleHide()"
+       (focusin)="keepSidebar()" (focusout)="scheduleHide()">
+  <div class="sidebar-head">
+    <a class="wordmark" routerLink="/"><span class="mark">λ</span><span>orders<span class="accent">.</span>pipeline</span></a>
+    <button class="sidebar-hide" type="button" aria-label="Hide menu" title="Hide menu" aria-controls="sidebar" (click)="hideSidebar()">«</button>
+  </div>
+  <nav class="menu" aria-label="Pages">
+    <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" ariaCurrentWhenActive="page">
+      <span class="icon" aria-hidden="true">▶</span>Playground
+    </a>
+    <a routerLink="/how-it-works" routerLinkActive="active" ariaCurrentWhenActive="page">
+      <span class="icon" aria-hidden="true">≡</span>How it works
+    </a>
+  </nav>
+</aside>
+
+<div class="content">
+  <main class="page">
+    <router-outlet />
+  </main>
+
+  <footer class="footer caption">
+    <span>Visualizer for the <code>orders-serverless</code> sample.</span>
+    <span>Simulated mode runs fully in the browser.</span>
+  </footer>
+</div>
