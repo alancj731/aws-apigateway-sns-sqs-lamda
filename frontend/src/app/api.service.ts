@@ -1,8 +1,9 @@
 import { HttpClient, HttpResponse } from '@angular/common/http';
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, map, tap } from 'rxjs';
 
 const STORAGE_KEY = 'orders-api-base-url';
+const FROM_ENV_KEY = 'orders-api-base-url-from-env';
 
 interface EnvConfig {
   ordersApiBaseUrl?: string;
@@ -17,12 +18,21 @@ export interface CreateOrderResponse {
 export class ApiService {
   private readonly http = inject(HttpClient);
 
-  readonly baseUrl = signal(readStoredUrl());
+  readonly baseUrl = signal(readStored(STORAGE_KEY) ?? 'http://localhost:5050');
+  /** True when the URL came from .env; the page then shows it masked */
+  readonly fromEnv = signal(readStored(FROM_ENV_KEY) === 'true');
+  /**
+   * What the page shows. Masking only keeps the URL off screens and screenshots: the browser still has to call it,
+   * so it stays visible in env.json and the network tab.
+   */
+  readonly displayUrl = computed(() => (this.fromEnv() ? maskUrl(this.baseUrl()) : this.baseUrl()));
 
-  setBaseUrl(url: string): void {
+  setBaseUrl(url: string, fromEnv = false): void {
     this.baseUrl.set(url);
+    this.fromEnv.set(fromEnv);
     try {
       localStorage.setItem(STORAGE_KEY, url);
+      localStorage.setItem(FROM_ENV_KEY, String(fromEnv));
     } catch {
       // storage unavailable (private mode); the value just won't persist
     }
@@ -32,7 +42,7 @@ export class ApiService {
   loadBaseUrlFromEnv(): Observable<string | null> {
     return this.http.get<EnvConfig>('env.json').pipe(
       map((env) => env.ordersApiBaseUrl ?? null),
-      tap((url) => url && this.setBaseUrl(url)),
+      tap((url) => url && this.setBaseUrl(url, true)),
     );
   }
 
@@ -44,10 +54,22 @@ export class ApiService {
   }
 }
 
-function readStoredUrl(): string {
+function readStored(key: string): string | null {
   try {
-    return localStorage.getItem(STORAGE_KEY) ?? 'http://localhost:5050';
+    return localStorage.getItem(key);
   } catch {
-    return 'http://localhost:5050';
+    return null;
+  }
+}
+
+/** https://abc123xyz.execute-api.ca-central-1.amazonaws.com → https://ab••••••.amazonaws.com */
+export function maskUrl(url: string): string {
+  try {
+    const { protocol, hostname } = new URL(url);
+    const labels = hostname.split('.');
+    const domain = labels.length > 2 ? '.' + labels.slice(-2).join('.') : '';
+    return `${protocol}//${labels[0].slice(0, 2)}••••••${domain}`;
+  } catch {
+    return '••••••';
   }
 }

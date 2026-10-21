@@ -40,7 +40,13 @@ const SAMPLE_EMAILS = ['ada@example.com', 'linus@example.com', 'grace@example.co
           <label class="field">
             <span class="label">API base URL</span>
             <div class="url-row">
-              <input class="text-input mono-input" name="baseUrl" [ngModel]="api.baseUrl()" (ngModelChange)="api.setBaseUrl($event)" placeholder="http://localhost:5050" />
+              @if (api.fromEnv()) {
+                <!-- The real URL from .env is masked; Edit swaps in an empty field rather than revealing it -->
+                <input class="text-input mono-input" name="baseUrlMasked" [value]="api.displayUrl()" readonly title="Loaded from .env" />
+                <button class="btn btn-outline" type="button" (click)="api.setBaseUrl('')">Edit</button>
+              } @else {
+                <input class="text-input mono-input" name="baseUrl" [ngModel]="api.baseUrl()" (ngModelChange)="api.setBaseUrl($event)" placeholder="http://localhost:5050" />
+              }
               <button class="btn btn-outline" type="button" (click)="loadFromEnv()" title="Use ORDERS_API_BASE_URL from .env">Load from .env</button>
             </div>
           </label>
@@ -135,7 +141,7 @@ export class OrderForm {
   loadFromEnv(): void {
     this.api.loadBaseUrlFromEnv().subscribe({
       next: (url) =>
-        this.envMessage.set(url ? `Loaded ${url} from .env` : 'ORDERS_API_BASE_URL is not set in .env or .env.local.'),
+        this.envMessage.set(url ? 'URL loaded from .env successfully' : 'ORDERS_API_BASE_URL is not set in .env or .env.local.'),
       error: () => this.envMessage.set('No env.json found. Start the app with npm start so .env gets read.'),
     });
   }
@@ -161,7 +167,7 @@ export class OrderForm {
         this.liveResult.set(null);
         this.liveError.set(
           err.status === 0
-            ? `Could not reach ${this.api.baseUrl()}. Is the Aspire AppHost running, and does Orders.Api allow CORS from this origin?`
+            ? `Could not reach ${this.api.displayUrl()}. Is the Aspire AppHost running, and does Orders.Api allow CORS from this origin?`
             : `${err.status} ${err.statusText}: ${typeof err.error === 'string' ? err.error : JSON.stringify(err.error)}`,
         );
       },
